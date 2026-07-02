@@ -1,1 +1,0 @@
-SERIES = "/v1/series"
