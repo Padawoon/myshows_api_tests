@@ -1,0 +1,1 @@
+pytest_plugins = ["fixtures.prepare_data_fixture", "fixtures.api_client"]
