@@ -1,8 +1,17 @@
+# Environments
 venv/
-.venv
+.venv/
+.env
+
+# IDE / Editors
 .idea/
 .idea
-.env
+
+# Python cache / builds
 __pycache__/
 *.pyc
+.pytest_cache/
 
+# Test Reports / Allure
+allure-results/
+allure-report/
