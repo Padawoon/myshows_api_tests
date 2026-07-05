@@ -34,7 +34,7 @@ class ApiSession:
         return self._send("GET", url=url, params=params)
 
     @allure.step("PUT-запрос к адресу {url}")
-    def put(self, url: str, params: dict | None = None):
+    def put(self, url: str, params: dict | None = None, json: dict | None = None):
         return self._send("PUT", url=url, params=params, json=json)
 
 
