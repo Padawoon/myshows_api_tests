@@ -1,0 +1,2 @@
+INSERT INTO series ("name",photo,rating,status,review) VALUES
+	 ('Тестовый сериал','https://avatars.mds.yandex.net/get-kinopoisk-image/1898899/20df477e-8a1c-4cf3-8518-7873e196ab60/300x450',10,'watching'::public."seriesstatus",'Тестовое описание') RETURNING id;
