@@ -1,5 +1,6 @@
 import psycopg
 import pytest
+import allure
 from http import HTTPStatus
 from config.api_config import BASE_URL
 from data.api_endpoints import SERIES
@@ -7,7 +8,9 @@ from pytest_check import check
 from fixtures.prepare_data_fixtures import DB_CONFIG
 
 
+@allure.suite("API MyShows/Series: Обновление сериалов")
 class TestPutSeries:
+    @allure.title("Успешное обновление поля '{field}' сериала")
     @pytest.mark.positive
     @pytest.mark.parametrize("field, new_value", [
         ("name", "Новый сериал"),
@@ -18,24 +21,28 @@ class TestPutSeries:
     ],
     ids=["change_name", "change_rating", "change_status", "change_review", "change_photo"]
     )
-
     def test_update_series_success(self, api_client, input_and_yield_one_show, field, new_value):
-        show_id = input_and_yield_one_show
-        payload = {"name": "Тестовый сериал",
-                   "photo": "https://avatars.mds.yandex.net/get-kinopoisk-image/1898899/20df477e-8a1c-4cf3-8518-7873e196ab60/300x450",
-                   "rating": 10, "status": "watching", "review": "Тестовое описание", field: new_value}
-        response = api_client.put(
-        f"{BASE_URL}{SERIES}/{show_id}",
-            json=payload
-        )
-        assert response.status_code == HTTPStatus.OK
+        with allure.step("Подготовка тестовых данных и получение ID"):
+            show_id = input_and_yield_one_show
+        with allure.step(f"Формирование payload для обновления поля '{field}'"):
+            payload = {"name": "Тестовый сериал",
+                       "photo": "https://avatars.mds.yandex.net/get-kinopoisk-image/1898899/20df477e-8a1c-4cf3-8518-7873e196ab60/300x450",
+                       "rating": 10, "status": "watching", "review": "Тестовое описание", field: new_value}
+        with allure.step("Отправка PUT-запроса на обновление сериала"):
+            response = api_client.put(
+                f"{BASE_URL}{SERIES}/{show_id}",
+                json=payload
+            )
+        with allure.step("Проверка статус-кода ответа"):
+            assert response.status_code == HTTPStatus.OK
 
-        with psycopg.connect(**DB_CONFIG) as conn:
-            with conn.cursor() as cur:
-                cur.execute(f"SELECT {field} FROM series where id = %s;", (show_id,))
-                db_res = cur.fetchone()
+        with allure.step("Проверка обновленного значения в базе данных"):
+            with psycopg.connect(**DB_CONFIG) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(f"SELECT {field} FROM series where id = %s;", (show_id,))
+                    db_res = cur.fetchone()
 
-        check.equal(db_res[0], new_value)
+            check.equal(db_res[0], new_value)
 
         # Тут я сначала сделал e2e проверку через гет, но потом переосмыслил ТЗ и понял, что нужно именно через бд
         # response = api_client.get(
