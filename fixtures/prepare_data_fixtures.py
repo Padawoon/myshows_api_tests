@@ -1,3 +1,4 @@
+import allure
 import pytest
 import psycopg
 import os
@@ -15,53 +16,66 @@ DB_CONFIG = {
     "port": "5432"
 }
 
-# Фикстурка, которая заполнит бд и снесёт таблицу после выполнения теста
+
+@allure.title("Наполнение БД тестовыми данными")
 @pytest.fixture(scope='function')
 def prepare_and_cleanup_test_data(request):
     inserted_rows = 0
 
-    # Обрабатываем случай, когда атрибута request.param может не быть
-    if not hasattr(request, 'param'):
-        # Это старые тесты. Загружаем их привычный дефолтный пак данных
-        filename = "test_data_for_insert.sql"
-    else:
-        filename = request.param
+    with allure.step("Определение файла с тестовыми данными"):
+        if not hasattr(request, 'param'):
+            filename = "test_data_for_insert.sql"
+            allure.attach("Параметр отсутствует. Используем дефолтный файл.", name="Инфо")
+        else:
+            filename = request.param
+
+        allure.attach(f"Выбранный файл: {filename}", name="Целевой SQL-скрипт")
 
     with psycopg.connect(**DB_CONFIG) as conn:
-        # Обрабатываем случай для 0 строк отдельно (если filename == None)
-        if filename is not None:
-            assert isinstance(filename, str)
-            sql_script = load_sql_script(filename)
+        with allure.step("Применение SQL-скрипта к базе данных"):
+            if filename is not None:
+                assert isinstance(filename, str)
+                sql_script = load_sql_script(filename)
 
-            with conn.cursor() as cur:
-                cur.execute(sql_script)
-                inserted_rows = cur.rowcount
-                conn.commit()
-        else:
-            # Если filename это None, мы ничего не вставляем в базу
-            inserted_rows = 0
+                with conn.cursor() as cur:
+                    cur.execute(sql_script)
+                    inserted_rows = cur.rowcount
+                    conn.commit()
+
+                allure.attach(str(inserted_rows), name="Успешно вставлено строк")
+            else:
+                allure.attach("Файл пустой (None). Пропускаем вставку.", name="Инфо")
+                inserted_rows = 0
 
         yield inserted_rows
 
-        with conn.cursor() as cur:
-            cur.execute("TRUNCATE TABLE series RESTART IDENTITY CASCADE;")
-            conn.commit()
+        with allure.step("Очистка базы данных (Teardown)"):
+            with conn.cursor() as cur:
+                cur.execute("TRUNCATE TABLE series RESTART IDENTITY CASCADE;")
+                conn.commit()
+            allure.attach("Таблица series успешно очищена (TRUNCATE)", name="Результат очистки")
 
-# Фикстура для добавления одного сериала в таблицу там, где не нужно много
+
+@allure.title("Наполнение БД одним сериалом")
 @pytest.fixture(scope='function')
 def input_and_yield_one_show():
     with psycopg.connect(**DB_CONFIG) as conn:
-        with conn.cursor() as cur:
-            # Кидает в бд один сериал
-            cur.execute(load_sql_script("test_one_show_insert.sql"))
-            # Забирает из RETURNING айди сериала и кладёт его в show_id
-            res = cur.fetchone()
-            show_id = res[0]
-            conn.commit()
-        # Отдаём show_id
+        with allure.step("Добавление тестового сериала в БД"):
+            with conn.cursor() as cur:
+                cur.execute(load_sql_script("test_one_show_insert.sql"))
+                # Забирает из RETURNING айди сериала и кладёт его в show_id
+                res = cur.fetchone()
+                show_id = res[0]
+                conn.commit()
+
+            # Прикрепляет ID к отчету
+            allure.attach(str(show_id), name="Создан сериал с ID")
+
+        # Отдаём show_id в тест
         yield show_id
 
-        with conn.cursor() as cur:
-            # Сносим этот добавленный сериал после теста
-            cur.execute("DELETE FROM series WHERE id = %s;", (show_id,))
-            conn.commit()
+        # Очистка после выполнения теста (Teardown)
+        with allure.step(f"Удаление тестового сериала с ID {show_id}"):
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM series WHERE id = %s;", (show_id,))
+                conn.commit()
