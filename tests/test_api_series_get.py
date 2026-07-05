@@ -94,6 +94,28 @@ class TestGetSeries:
         compare = DeepDiff(expected_names, actual_names, ignore_order=True)
         assert not compare, compare
 
+    @pytest.mark.parametrize(
+        "prepare_and_cleanup_test_data",
+        [
+            None,  # Кейс для 0 строк (в фикстуру уйдет None)
+            "test_one_show_insert.sql",  # Кейс для 1 строки
+            "test_three_shows_insert.sql"  # Кейс для 3 строк
+        ],
+        indirect=True,
+        ids=["zero_rows", "one_row", "three_rows"]
+    )
+    def test_get_series_count(self, api_client, prepare_and_cleanup_test_data):
+        expected_count = prepare_and_cleanup_test_data
+
+        response = api_client.get(f"{BASE_URL}{SERIES}")
+        assert response.status_code == HTTPStatus.OK
+
+        response_body = response.json()
+        assert len(response_body) == expected_count
+
+        template = load_schema("series.yml")
+        validate(instance=response_body, schema=template)
+
     @pytest.mark.negative
     def test_get_series_not_found_endpoint(self, api_client):
         invalid_endpoint = f"{BASE_URL}/api/v1/some_fake_endpoint_999"
