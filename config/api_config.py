@@ -1,1 +1,1 @@
-BASE_URL = 'http://localhost/api/'
+BASE_URL = "http://msr-backend:8000/api"
