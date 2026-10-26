@@ -152,7 +152,7 @@ class TestGetSeries:
     @pytest.mark.negative
     def test_get_series_not_found_endpoint(self, api_client):
         with allure.step("Отправка GET-запроса на несуществующий эндпоинт"):
-            invalid_endpoint = f"{BASE_URL}/api/v1/some_fake_endpoint_999"
+            invalid_endpoint = f"{BASE_URL}/v1/some_fake_endpoint_999"
             response = api_client.get(invalid_endpoint)
         with allure.step("Проверка статус-кода ответа (404 Not Found)"):
             assert response.status_code == HTTPStatus.NOT_FOUND
